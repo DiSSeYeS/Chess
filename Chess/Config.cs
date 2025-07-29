@@ -11,5 +11,7 @@ namespace Chess
         public static int SIZE;
         public static string[] COLORS = new string[2];
         public static char[] ALPHABET = new char[26];
+        public static ChessBoard CHESSBOARD;
+        public static Dictionary<Type, string> ICONS;
     }
 }
