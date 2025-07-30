@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -58,13 +59,13 @@ namespace Chess
             this._chessBoard[Config.SIZE - 1, 0].PlacePiece(new Rook([Config.SIZE - 1, 0], COLOR));
             this._chessBoard[Config.SIZE - 1, Config.SIZE - 1].PlacePiece(new Rook([Config.SIZE - 1, Config.SIZE - 1], COLOR));
 
-            this._chessBoard[Config.SIZE - 1, 1].PlacePiece(new Knight([0, 1], COLOR));
+            this._chessBoard[Config.SIZE - 1, 1].PlacePiece(new Knight([Config.SIZE - 1, 1], COLOR));
             this._chessBoard[Config.SIZE - 1, Config.SIZE - 2].PlacePiece(new Knight([Config.SIZE - 1, Config.SIZE - 2], COLOR));
 
             this._chessBoard[Config.SIZE - 1, 2].PlacePiece(new Bishop([Config.SIZE - 1, 2], COLOR));
             this._chessBoard[Config.SIZE - 1, Config.SIZE - 3].PlacePiece(new Bishop([Config.SIZE - 1, Config.SIZE - 3], COLOR));
 
-            this._chessBoard[Config.SIZE - 1, 3].PlacePiece(new King([0, 3], COLOR));
+            this._chessBoard[Config.SIZE - 1, 3].PlacePiece(new King([Config.SIZE - 1, 3], COLOR));
             this._chessBoard[Config.SIZE - 1, Config.SIZE - 4].PlacePiece(new Queen([Config.SIZE - 1, Config.SIZE - 4], COLOR));
 
             for (int i = 0; i < Config.SIZE; i++)
@@ -96,15 +97,23 @@ namespace Chess
     }
     public abstract class ChessPiece
     {
-        private string Color { get; }
-        protected int[] Position { get; set; }
+        public string Color { get; }
+        protected int[] Position { get; set; } // [цифра, буква] 
         protected int CountOfMoves { get; set; }
-        protected IEnumerable<int[]> Moves { get; set; }
+        public List<int[]> Moves = [];
         public bool CanMove() => this.Moves.Contains(Position);
-        public void Move(int[] coordinates) => this.Position = [coordinates[0], coordinates[1]];
-        public void Take(int[] coordinates) => this.Position = Position; // ...
+        public void Move(int[] coordinates) 
+        {
+            if (!CanMove()) return;
+            this.Position = [coordinates[0], coordinates[1]];
+        }
+        public void Take(int[] coordinates)                             // ............................................................... //
+        {                                                              // .......УБРАТЬ КООРДИНАТЫ У ФИГУР ОСТАВИТЬ ТОЛЬКО У ПОЛЕЙ....... //
+            if (!CanMove()) return;                                   // ............................................................... //
+            this.Position = [coordinates[0], coordinates[1]];
+        }
         public abstract void CalculateMoves();
-        public string GetCurrentPosition() => $"{Config.ALPHABET[Position[0]]}{Position[1] + 1}";
+        public string GetCurrentPosition() => $"{Config.ALPHABET[Position[1]]}{Position[0] + 1}";
         protected ChessPiece(int[] position, string color)
         {
             this.Position = 
@@ -126,15 +135,47 @@ namespace Chess
 
         public override void CalculateMoves()
         {
-            if (this.CountOfMoves > 0)
-            {
-                
+            int delta = this.Color == "white" ? 1 : -1;
 
-                return;
-            }
-            if (Config.CHESSBOARD.Fields[this.Position[0], this.Position[1] + 2].IsEmpty)
+            if (this.CountOfMoves == 0)
             {
-                Moves.Append([this.Position[0], this.Position[1] + 2]);
+                if (Config.CHESSBOARD.Fields[this.Position[0] + (2 * delta), this.Position[1]].IsEmpty &&
+                    Config.CHESSBOARD.Fields[this.Position[0] + delta, this.Position[1]].IsEmpty)
+                {
+                    Moves.Add([this.Position[0] + (2 * delta), this.Position[1]]);
+                }
+            }
+            if (Config.CHESSBOARD.Fields[this.Position[0] + delta, this.Position[1]].IsEmpty)
+            {
+                this.Moves.Add([this.Position[0] + delta, this.Position[1]]);
+            }
+
+            switch (this.Position[1])
+            {
+                case 0:
+                    if (!Config.CHESSBOARD.Fields[this.Position[0] + delta, this.Position[1] + 1].IsEmpty)
+                    {
+                        this.Moves.Add([this.Position[0] + delta, this.Position[1] + 1]);
+                    }
+                    break;
+                case 7:
+                    if (!Config.CHESSBOARD.Fields[this.Position[0] + delta, this.Position[1] - 1].IsEmpty)
+                    {
+                        this.Moves.Add([this.Position[0] + delta, this.Position[1] - 1]);
+                    }
+                    break;
+                default:
+
+
+                    if (!Config.CHESSBOARD.Fields[this.Position[0] + delta, this.Position[1] - 1].IsEmpty)
+                    {
+                        this.Moves.Add([this.Position[0] + delta, this.Position[1] - 1]);
+                    }
+                    if (!Config.CHESSBOARD.Fields[this.Position[0] + delta, this.Position[1] + 1].IsEmpty)
+                    {
+                        this.Moves.Add([this.Position[0] + delta, this.Position[1] + 1]);
+                    }
+                    break;
             }
         }
 
@@ -208,7 +249,30 @@ namespace Chess
 
         public override void CalculateMoves()
         {
+            this.Moves.Clear();
 
+            int[,] knightMoves = new int[8, 2] {
+                { 1, 2 }, { 2, 1 }, { 2, -1 }, { 1, -2 },
+                { -1, -2 }, { -2, -1 }, { -2, 1 }, { -1, 2 }
+            };
+
+            for (int i = 0; i < 8; i++)
+            {
+                int newRow = this.Position[0] + knightMoves[i, 0];
+                int newCol = this.Position[1] + knightMoves[i, 1];
+
+                if (newRow >= 0 && newRow < Config.SIZE &&
+                    newCol >= 0 && newCol < Config.SIZE)
+                {
+                    Field targetField = Config.CHESSBOARD.Fields[newRow, newCol];
+
+                    if (targetField.IsEmpty ||
+                        (!targetField.IsEmpty && targetField.GetPiece().Color != this.Color))
+                    {
+                        this.Moves.Add([newRow, newCol]);
+                    }
+                }
+            }
         }
     }
 }

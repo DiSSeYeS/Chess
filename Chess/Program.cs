@@ -1,6 +1,8 @@
 ﻿// ...
 
 
+using System.Xml;
+
 namespace Chess
 {
     class Program
@@ -14,7 +16,19 @@ namespace Chess
             {
                 for (int j = 0; j < Config.SIZE; j++)
                 {
-                    Console.Write(board.Fields[i, j].ToString() + " ");
+                    ChessPiece piece = board.Fields[i, j].GetPiece();
+
+                    if (piece == null) continue;
+                    piece.CalculateMoves();
+
+                    Console.WriteLine($"Piece: {piece.GetType()} {piece.GetCurrentPosition()} {piece.Color}");
+
+                    
+                    foreach (var item in piece.Moves)
+                    {
+                        Console.WriteLine(item[0] + " " + item[1]);
+                    }
+                    
                 }
                 Console.WriteLine();
             }
